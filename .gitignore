@@ -35,3 +35,39 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Ansible temporary & cache
+.ansible/
+*.retry
+__pycache__/
+*.pyc
+
+# Logs
+ansible.log
+*.log
+
+# Vault & credentials
+vault_pass.txt
+.vault_pass
+.vault_pass.txt
+*.vault.yml
+*_decrypted.yml
+
+# SSH keys
+id_rsa
+id_rsa.pub
+*.pem
+
+# Inventory temp
+.inventory_*
+.tmp/
+
+# Galaxy cache
+roles/
+collections/
+
+# Python venv
+venv/
+.env/
+
+
