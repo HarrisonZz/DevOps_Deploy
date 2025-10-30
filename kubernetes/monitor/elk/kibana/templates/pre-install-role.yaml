@@ -5,7 +5,6 @@ metadata:
   labels: {{ include "kibana.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-delete-policy": hook-succeeded
     # 1. 確保 ArgoCD 視其為 PreSync Hook
     argocd.argoproj.io/hook: PreSync
     # 2. 使用負數 Sync Wave，確保它在所有其他資源之前被應用
