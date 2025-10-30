@@ -21,3 +21,12 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jqPathExpressions:
+        - .metadata.annotations
+    - group: v1
+      kind: Service
+      jqPathExpressions:
+        - .metadata.annotations
