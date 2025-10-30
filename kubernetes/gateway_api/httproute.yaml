@@ -1,0 +1,41 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: web-route
+  namespace: default
+spec:
+  parentRefs:
+    - name: web-gateway
+  hostnames:
+    - "www.hrscyj.uk"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /web
+      filters:
+        # 移除 prefix，讓後端接收到的路徑正確（可選）
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: web-app-svc
+          port: 8080
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /es
+      filters:
+        # 移除 prefix /es，讓後端接收到的路徑正確（可選）
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: es-proxy
+          namespace: logging
+          port: 9200
+
