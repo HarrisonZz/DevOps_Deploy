@@ -1,8 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: elk-stack
+  name: elk-kibana
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
   labels:
     app.kubernetes.io/part-of: devops-stack
 spec:
@@ -10,11 +12,11 @@ spec:
   source:
     repoURL: https://github.com/HarrisonZz/DevOps_Deploy.git
     targetRevision: main
-    path: kubernetes/monitor/elk
+    path: kubernetes/monitor/elk/kibana
     helm:
       releaseName: kibana
       valueFiles:
-        - values/kibana-values.yaml
+        - kubernetes/monitor/elk/values/kibana-values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: logging
@@ -30,11 +32,4 @@ spec:
     - name: Owner
       value: Harrison Chen
     - name: Purpose
-      value: ELK stack managed by ArgoCD
-
-  ignoreDifferences:
-    - group: apps
-      kind: StatefulSet
-      jsonPointers:
-        - /spec/volumeClaimTemplates
-
+      value: Deploy Kibana (Helm)

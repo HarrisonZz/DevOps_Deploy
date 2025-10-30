@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: elk-core
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"  # wave 1 → Kibana 之前
+  labels:
+    app.kubernetes.io/part-of: devops-stack
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/HarrisonZz/DevOps_Deploy.git
+    targetRevision: main
+    path: kubernetes/monitor/elk
+    directory:
+      recurse: true                   # 讀取 elk 目錄下所有 YAML
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+  revisionHistoryLimit: 5
+  info:
+    - name: Owner
+      value: Harrison Chen
+    - name: Purpose
+      value: Deploy Elasticsearch + Logstash
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/volumeClaimTemplates
