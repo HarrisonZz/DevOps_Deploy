@@ -1,0 +1,522 @@
+---
+    # 請在啟動後手動執行下列指令建立 Tunnel：
+    # cloudflared tunnel create rds-proxy
+    # cloudflared tunnel route dns rds-proxy rds.hrscyj.xyz
+    # cloudflared tunnel run rds-proxy
+- name: Update HostName IPs
+  hosts: localhost
+  vars:
+    vagrant_config_path: "{{ lookup('env','HOME') }}/.ssh/vagrant_config"
+
+    # VM 名稱與目標 IP 對照表
+    vm_ip_map:
+      k3s-controlplane: 192.168.100.20
+      k3s-agent: 192.168.100.21
+
+  tasks:
+    - name: Verify vagrant_config exists
+      stat:
+        path: "{{ vagrant_config_path }}"
+      register: cfg_stat
+
+    - name: Abort if config not found
+      fail:
+        msg: "File not found: {{ vagrant_config_path }}"
+      when: not cfg_stat.stat.exists
+
+    - name: Ensure HostName for each VM (idempotent, block-scoped)
+      loop: "{{ vm_ip_map | dict2items }}"
+      vars:
+        vm_name: "{{ item.key }}"
+        vm_ip: "{{ item.value }}"
+      community.general.ssh_config:
+        ssh_config_file: "{{ vagrant_config_path }}"   # 例如 /home/harrison/.ssh/vagrant_config
+        host: "{{ vm_name }}"               # k3s-controlplane / k3s-agent
+        hostname: "{{ vm_ip }}"             # 192.168.100.20 / .21
+        identity_file: "{{ lookup('env','HOME') }}/.ssh/{{ vm_name }}_key"
+        port: 22
+        state: present
+
+
+    - name: Confirm update
+      ansible.builtin.shell: grep -A1 "Host " {{ vagrant_config_path }}
+      register: result
+      changed_when: false
+
+    - debug:
+        var: result.stdout_lines
+
+- name: Configure and install K3s Server (VM)
+  hosts: k3s_server
+  become: yes
+  vars:
+    chrony_conf_path: /etc/chrony/chrony.conf
+  tasks:
+    - name: Replace /etc/apt/sources.list with Bookworm entries
+      blockinfile:
+        path: /etc/apt/sources.list
+        create: yes
+        owner: root
+        group: root
+        mode: '0644'
+        block: |
+          deb http://deb.debian.org/debian bookworm main contrib non-free-firmware non-free
+          deb http://deb.debian.org/debian bookworm-updates main contrib non-free-firmware non-free
+          deb http://security.debian.org/debian-security bookworm-security main contrib non-free-firmware non-free
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: apt-get update
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install chrony
+      apt:
+        name: chrony
+        state: present
+
+    - name: Configure chrony sources
+      copy:
+        dest: "{{ chrony_conf_path }}"
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          {% for src in chrony_time_sources %}
+          pool {{ src }} iburst
+          {% endfor %}
+          driftfile /var/lib/chrony/chrony.drift
+          makestep 1.0 3
+          rtcsync
+          keyfile /etc/chrony/chrony.keys
+          leapsectz right/UTC
+      notify: Restart chrony
+
+    - name: Enable & start chronyd (if systemd is present)
+      service:
+        name: chrony
+        state: started
+        enabled: yes
+      when: ansible_service_mgr == "systemd"
+
+    - name: Set timezone
+      community.general.timezone:
+        name: "{{ timezone }}"
+    
+    - name: Ensure iptables tools are installed
+      become: yes
+      ansible.builtin.package:
+        name:
+          - iptables
+          - iptables-persistent
+        state: present
+
+    - name: Install K3s server via get.k3s.io
+      shell: |
+        curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--flannel-backend=vxlan --flannel-iface=eth1 --disable=servicelb --disable=traefik --cluster-cidr={{ cluster_cidr }} --service-cidr={{ service_cidr }} --cluster-dns={{ cluster_dns }} --node-ip={{ k3s_server_ip }} --write-kubeconfig-mode=644 --kube-proxy-arg=proxy-mode=ipvs" sh -s - server --cluster-init
+      args:
+        creates: /usr/local/bin/k3s
+      register: k3s_server_install
+
+    - name: Ensure k3s service is enabled and running
+      service:
+        name: k3s
+        state: started
+        enabled: yes
+      when: ansible_service_mgr == "systemd"
+
+    - name: Wait for node-token to be created
+      wait_for:
+        path: /var/lib/rancher/k3s/server/node-token
+        timeout: 120
+
+    - name: Read node-token
+      slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_token_file
+
+    - name: Expose token as hostvar on server (b64 content)
+      set_fact:
+        k3s_node_token: "{{ k3s_token_file.content }}"
+
+  handlers:
+    - name: Restart chrony
+      service:
+        name: chrony
+        state: restarted
+      when: ansible_service_mgr == "systemd"
+
+# -----------------------
+
+- name: Wait for K3s API and fetch kubeconfig
+  hosts: localhost
+  tasks:
+    - name: Wait for K3s API port ready
+      wait_for:
+        host: "{{ k3s_server_ip }}"
+        port: 6443
+        delay: 5
+        timeout: 300
+      delegate_to: localhost
+
+    - name: Read kubeconfig from server
+      slurp:
+        src: /etc/rancher/k3s/k3s.yaml
+      register: kubeconfig_raw
+      delegate_to: controlplane
+
+    - name: Save kubeconfig locally
+      copy:
+        content: "{{ kubeconfig_raw.content | b64decode | regex_replace('127\\.0\\.0\\.1', k3s_server_ip) }}"
+        dest: "{{ ansible_env.HOME }}/.kubeconfig"
+    
+    # 任務 2: 覆蓋/移除所有舊的 KUBECONFIG 導出設定
+    - name: Ensure existing KUBECONFIG export is removed
+      lineinfile:
+        path: "{{ ansible_env.HOME }}/.bashrc"
+        # 使用正規表達式匹配所有以 'export KUBECONFIG=' 開頭的行
+        regexp: '^export KUBECONFIG=.*' 
+        state: absent # 確保這些匹配到的行被移除
+        create: yes # 如果 .bashrc 不存在，則建立它
+
+    # 任務 3: 插入新的 KUBECONFIG 環境變數定義到 ~/.bashrc 檔案末尾
+    - name: Add/Overwrite KUBECONFIG environment variable in ~/.bashrc
+      lineinfile:
+        path: "{{ ansible_env.HOME }}/.bashrc"
+        line: 'export KUBECONFIG={{ ansible_env.HOME }}/.kubeconfig' # 建議使用絕對路徑變數更清晰
+        insertafter: EOF
+        state: present
+        create: yes # 如果 .bashrc 不存在，則建立它
+    
+    - name: Source bashrc to make KUBECONFIG effective immediately
+      shell: source ~/.bashrc
+      args:
+        executable: /bin/bash
+
+#------------------------
+
+- name: Configure and join VM Agent
+  hosts: k3s_agent
+  become: yes
+  vars:
+    chrony_conf_path: /etc/chrony/chrony.conf
+    server_host: "{{ groups['k3s_server'][0] }}"
+    node_token_decoded: "{{ hostvars[server_host].k3s_node_token | b64decode | trim }}"
+  tasks:
+    - name: Replace /etc/apt/sources.list with Bookworm entries
+      blockinfile:
+        path: /etc/apt/sources.list
+        create: yes
+        owner: root
+        group: root
+        mode: '0644'
+        block: |
+          deb http://deb.debian.org/debian bookworm main contrib non-free-firmware non-free
+          deb http://deb.debian.org/debian bookworm-updates main contrib non-free-firmware non-free
+          deb http://security.debian.org/debian-security bookworm-security main contrib non-free-firmware non-free
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: apt-get update
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install chrony
+      apt:
+        name: chrony
+        state: present
+
+    - name: Configure chrony sources
+      copy:
+        dest: "{{ chrony_conf_path }}"
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          {% for src in chrony_time_sources %}
+          pool {{ src }} iburst
+          {% endfor %}
+          driftfile /var/lib/chrony/chrony.drift
+          makestep 1.0 3
+          rtcsync
+          keyfile /etc/chrony/chrony.keys
+          leapsectz right/UTC
+      notify: Restart chrony
+
+    - name: Enable & start chronyd (if systemd is present)
+      service:
+        name: chrony
+        state: started
+        enabled: yes
+      when: ansible_service_mgr == "systemd"
+
+    - name: Set timezone
+      community.general.timezone:
+        name: "{{ timezone }}"
+    
+    - name: Ensure iptables tools are installed
+      become: yes
+      ansible.builtin.package:
+        name:
+          - iptables
+          - iptables-persistent
+        state: present
+
+    - name: Check if k3s-agent service exists
+      shell: systemctl list-units --type=service | grep -q k3s-agent
+      register: k3s_agent_check
+      ignore_errors: yes
+
+    - name: Uninstall existing k3s agent if present
+      shell: /usr/local/bin/k3s-agent-uninstall.sh
+      when: k3s_agent_check.rc == 0
+      become: yes
+
+    - name: Install K3s agent via get.k3s.io
+      shell: |
+        curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="agent --flannel-iface=eth1 --node-ip {{ node_vm_ip }}" K3S_NODE_NAME="{{ node_vm_name }}" K3S_URL="{{ k3s_server_url }}" K3S_TOKEN="{{ node_token_decoded }}" sh -
+      args:
+        creates: /usr/local/bin/k3s-agent
+
+    - name: Ensure k3s-agent is enabled and running (if systemd present)
+      service:
+        name: k3s-agent
+        state: started
+        enabled: yes
+      when: ansible_service_mgr == "systemd"
+      ignore_errors: yes
+    
+    - name: Ensure base directory exists
+      become: yes
+      file:
+        path: /var/lib/rancher/k3s
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Ensure storage subdirectory exists and writable
+      become: yes
+      file:
+        path: /var/lib/rancher/k3s/storage
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+  handlers:
+    - name: Restart chrony
+      service:
+        name: chrony
+        state: restarted
+      when: ansible_service_mgr == "systemd"
+
+# -----------------------
+
+- name: Configure and join BeagleBone Black Agent
+  hosts: k3s_agents_bbb
+  become: yes
+  vars:
+    chrony_conf_path: /etc/chrony/chrony.conf
+    server_host: "{{ groups['k3s_server'][0] }}"
+    node_token_decoded: "{{ hostvars[server_host].k3s_node_token | b64decode | trim }}"
+    
+  handlers:
+    - name: Restart networking
+      become: yes
+      service:
+        name: networking
+        state: restarted
+  tasks:
+     # ====== BBB 專屬網路設定 ======
+    - name: Configure static IP for eth0 (persistent via systemd)
+      become: yes
+      copy:
+        dest: /etc/systemd/network/eth0.network
+        mode: '0644'
+        content: |
+          [Match]
+          Name=eth0
+
+          [Network]
+          Address=192.168.100.10/24
+
+    - name: Configure usb0 via systemd-networkd
+      become: yes
+      block:
+        - name: Ensure systemd-networkd is installed and enabled
+          package:
+            name: systemd
+            state: present
+
+        - name: Deploy usb0 network configuration
+          copy:
+            dest: /etc/systemd/network/usb0.network
+            owner: root
+            group: root
+            mode: '0644'
+            content: |
+              [Match]
+              Name=usb0
+
+              [Network]
+              Address=192.168.137.2/24
+              Gateway=192.168.137.1
+              DNS=8.8.8.8
+              GatewayOnLink=yes
+
+        - name: Enable and restart systemd-networkd
+          systemd:
+            name: systemd-networkd
+            enabled: true
+            state: restarted
+        
+        - name: Verify usb0 status
+          command: networkctl status usb0
+          register: usb0_status
+          changed_when: false
+        
+        - name: Show usb0 status
+          debug:
+            msg: "{{ usb0_status.stdout }}"
+        
+
+    - name: Add default route via BBB gateway (idempotent)
+      ansible.builtin.command: ip route add default via {{ bbb_default_gw }}
+      register: route_add
+      failed_when: route_add.rc not in [0,2]
+      changed_when: route_add.rc == 0
+
+    - name: Restart systemd-resolved
+      service:
+        name: systemd-resolved
+        state: restarted
+
+    - name: Install chrony
+      apt:
+        name: chrony
+        state: present
+        update_cache: yes
+
+    - name: Configure chrony servers
+      copy:
+        dest: /etc/chrony/chrony.conf
+        mode: '0644'
+        content: |
+          pool time.google.com iburst
+          pool time.cloudflare.com iburst
+          pool 0.tw.pool.ntp.org iburst
+          driftfile /var/lib/chrony/chrony.drift
+          rtcsync
+          makestep 1.0 3
+          logdir /var/log/chrony
+
+    - name: Enable & restart chrony
+      systemd:
+        name: chrony
+        enabled: yes
+        state: restarted
+
+    - name: Verify time sync (chronyc sources)
+      shell: chronyc -n sources -v || true
+      register: chrony_sources
+      changed_when: false
+
+    - name: Set timezone
+      community.general.timezone:
+        name: "{{ timezone }}"
+    
+    - name: Step system clock immediately via chrony
+      become: yes
+      command: chronyc makestep
+
+    # ===========================================
+
+    - name: Check if k3s-agent service exists
+      shell: systemctl list-units --type=service | grep -q k3s-agent
+      register: k3s_agent_check
+      ignore_errors: yes
+
+    - name: Uninstall existing k3s agent if present
+      shell: /usr/local/bin/k3s-agent-uninstall.sh
+      when: k3s_agent_check.rc == 0
+      become: yes
+
+    - name: Install K3s agent via get.k3s.io
+      shell: |
+        curl -sfL https://get.k3s.io | K3S_URL="{{ k3s_server_url }}" K3S_TOKEN="{{ node_token_decoded }}" INSTALL_K3S_EXEC='agent --flannel-iface=eth0 --node-label task=application --node-ip {{ bbb_node_ip }}' sh -
+      args:
+        creates: /usr/local/bin/k3s-agent
+
+    - name: Ensure k3s-agent is enabled and running
+      service:
+        name: k3s-agent
+        state: started
+        enabled: yes
+      when: ansible_service_mgr == "systemd"
+  
+    - name: Ensure base directory exists
+      become: yes
+      file:
+        path: /var/lib/rancher/k3s
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Ensure storage subdirectory exists and writable
+      become: yes
+      file:
+        path: /var/lib/rancher/k3s/storage
+        state: directory
+        owner: root
+        group: root
+        mode: '0777'
+
+  handlers:
+    - name: Restart chrony
+      service:
+        name: chrony
+        state: restarted
+      when: ansible_service_mgr == "systemd"
+
+- name: Setup periodic cache cleanup
+  hosts: k3s_agents_bbb
+  become: yes
+
+  tasks:
+    - name: Deploy cache cleanup script
+      copy:
+        dest: /usr/local/bin/clear-cache.sh
+        mode: '0755'
+        content: |
+          #!/bin/bash
+
+          LOG=/var/log/clear-cache.log
+
+          echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') Start cache cleanup" | tee -a $LOG
+          free -h | tee -a $LOG
+          sync
+          echo 3 > /proc/sys/vm/drop_caches
+          echo "[INFO] After cleanup:" | tee -a $LOG
+          free -h | tee -a $LOG
+          echo "-------------------------------------------------------" >> $LOG
+
+    - name: Ensure log file exists
+      file:
+        path: /var/log/clear-cache.log
+        state: touch
+        owner: root
+        mode: '0644'
+
+    - name: Schedule cache cleanup every 5 minutes
+      cron:
+        name: "Clear Linux cache every 5 minutes"
+        job: "/usr/local/bin/clear-cache.sh"
+        minute: "*/5"
