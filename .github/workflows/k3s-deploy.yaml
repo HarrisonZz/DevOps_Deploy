@@ -26,4 +26,4 @@ jobs:
 
       - name: Apply ArgoCD Application
         run: |
-          kubectl apply -f kubernetes/argocd/application.yaml -n argocd
+          kubectl apply -f kubernetes/argocd/ -n argocd
