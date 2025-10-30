@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - 'ansible/local/**'    # 只有 Ansible 變更時才觸發
+  workflow_dispatch:
 
 jobs:
   ansible-deploy:
