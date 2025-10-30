@@ -11,7 +11,7 @@ on:
 jobs:
   terraform-local:
     # 只在 PR 已合併時執行（避免被關閉但未 merge）
-    if: github.event.pull_request.merged == true
+    
     runs-on: Windows
 
     steps:
