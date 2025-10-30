@@ -32,6 +32,10 @@ jobs:
         working-directory: ansible/local
         run: |
           echo "📘 Verifying Ansible installation..."
+          
+          ssh-keygen -R 192.168.100.20
+          ssh-keygen -R 192.168.100.21
+          
           ansible --version || (echo "❌ Ansible not installed" && exit 1)
           ansible-config dump --only-changed || true
           ansible-galaxy collection install -r requirements.yml
