@@ -1,0 +1,29 @@
+name: CD - Install ArgoCD on K3s
+
+on:
+  workflow_dispatch:  # 手動觸發
+  push:
+    branches:
+      - main
+    paths:
+      - 'kubernetes/argocd/**'
+
+jobs:
+  setup-argocd:
+    runs-on: Linux
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        
+      - name: Create ArgoCD namespace
+        run: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Install ArgoCD
+        run: |
+          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+          kubectl rollout status deploy/argocd-server -n argocd --timeout=300s
+
+      - name: Apply ArgoCD Application
+        run: |
+          kubectl apply -f kubernetes/argocd/application.yaml -n argocd
