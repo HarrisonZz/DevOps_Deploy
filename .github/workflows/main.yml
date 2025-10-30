@@ -1,0 +1,29 @@
+name: CD - Terraform Local Infra
+
+on:
+  pull_request:
+    types: [closed]      # 只在 PR 被關閉時觸發
+    branches:
+      - main             # 限定主分支
+    paths:
+      - 'terraform/local/**'  # 僅當這個路徑下有變更時才觸發
+jobs:
+  terraform-local:
+    # 只在 PR 已合併時執行（避免被關閉但未 merge）
+    if: github.event.pull_request.merged == true
+    runs-on: Windows
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: terraform/local
+          fetch-depth: 1
+              
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform/local
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        working-directory: terraform/local
