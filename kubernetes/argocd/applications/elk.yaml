@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: elk-stack
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: devops-stack
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/HarrisonZz/DevOps_Deploy.git
+    targetRevision: main
+    path: kubernetes/monitor/elk
+    helm:
+      releaseName: kibana
+      valueFiles:
+        - values/kibana-values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+  revisionHistoryLimit: 5
+  info:
+    - name: Owner
+      value: Harrison Chen
+    - name: Purpose
+      value: ELK stack managed by ArgoCD
+
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/volumeClaimTemplates
+
