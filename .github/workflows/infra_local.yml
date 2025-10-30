@@ -7,6 +7,7 @@ on:
       - main             # 限定主分支
     paths:
       - 'terraform/local/**'  # 僅當這個路徑下有變更時才觸發
+  workflow_dispatch:
 jobs:
   terraform-local:
     # 只在 PR 已合併時執行（避免被關閉但未 merge）
