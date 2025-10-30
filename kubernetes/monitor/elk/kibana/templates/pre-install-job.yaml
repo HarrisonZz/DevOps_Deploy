@@ -6,6 +6,16 @@ metadata:
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-delete-policy": hook-succeeded
+    # 1. 確保 ArgoCD 視其為 PreSync Hook
+    argocd.argoproj.io/hook: PreSync
+    
+    # 2. 設置 Sync Wave 為 -5。這確保：
+    #    - 在 RBAC 資源 (Wave -10) 之後執行。
+    #    - 在 主 Deployment (Wave 0/1) 之前執行。
+    argocd.argoproj.io/sync-wave: "-5" 
+
+    # 3. 確保 Job 成功後自動清理，保持一致性
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
     {{- if .Values.annotations }}
     {{- range $key, $value := .Values.annotations }}
     {{ $key }}: {{ $value | quote }}

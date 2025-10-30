@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: http-server
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/HarrisonZz/DevOps_Deploy.git
+    targetRevision: main
+    path: kubernetes/http_server
+    directory:
+      recurse: true
+      include: '*.yaml'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

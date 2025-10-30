@@ -6,6 +6,10 @@ metadata:
   annotations:
     "helm.sh/hook": post-delete
     "helm.sh/hook-delete-policy": hook-succeeded
+    # 確保 ArgoCD 視其為 PostDelete Hook
+    argocd.argoproj.io/hook: PostDelete
+    # ArgoCD 建議的 Hook 刪除策略
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
     {{- if .Values.annotations }}
     {{- range $key, $value := .Values.annotations }}
     {{ $key }}: {{ $value | quote }}
