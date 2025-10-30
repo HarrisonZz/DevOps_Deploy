@@ -6,13 +6,9 @@ metadata:
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-delete-policy": hook-succeeded
-    # --- 新增的 ArgoCD 順序控制註解 ---
-    # 1. 確保 ArgoCD 視其為 PreSync Hook
-    argocd.argoproj.io/hook: PreSync
-    # 2. 使用負數 Sync Wave，確保它在所有其他資源之前被應用
+
     argocd.argoproj.io/sync-wave: "-10" 
-    # 3. ArgoCD 建議的 Hook 刪除策略
-    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+
     {{- if .Values.annotations }}
     {{- range $key, $value := .Values.annotations }}
     {{ $key }}: {{ $value | quote }}
