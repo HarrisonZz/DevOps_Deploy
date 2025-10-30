@@ -36,6 +36,6 @@ resource "null_resource" "generate_ssh_config" {
 resource "null_resource" "copy_to_wsl" {
   depends_on = [null_resource.generate_ssh_config]
   provisioner "local-exec" {
-    command = "wsl dos2unix ./scripts/copy_to_wsl.sh && wsl bash ./scripts/${var.copy_script} ${join(" ", var.vm_names)}"
+    command = "wsl bash ./scripts/${var.copy_script} ${join(" ", var.vm_names)}"
   }
 }
