@@ -33,8 +33,8 @@ jobs:
         run: |
           echo "📘 Verifying Ansible installation..."
           
-          ssh-keygen -R 192.168.100.20
-          ssh-keygen -R 192.168.100.21
+          ssh-keygen -R 192.168.100.100
+          ssh-keygen -R 192.168.100.101
           
           ansible --version || (echo "❌ Ansible not installed" && exit 1)
           ansible-config dump --only-changed || true
