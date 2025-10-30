@@ -1,0 +1,81 @@
+name: CD - Ansible Deploy (Linux Host Runner)
+
+on:
+  pull_request:
+    types: [closed]      # 只在 PR 被關閉時觸發
+    branches:
+      - main
+    paths:
+      - 'ansible/local/**'    # 只有 Ansible 變更時才觸發
+
+jobs:
+  ansible-deploy:
+    runs-on: Linux    
+
+    env:
+      INVENTORY_FILE: "inventory.yml"
+      PLAYBOOK_FILE: "playbooks/setup.yml"
+      VAULT_PASS_FILE: "/tmp/vault_pass.txt"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: ansible/local
+          fetch-depth: 1
+
+      # ============================
+      # Stage 1️⃣ Verify Environment
+      # ============================
+      - name: 📘 Verify Ansible installation
+        working-directory: ansible/local
+        run: |
+          echo "📘 Verifying Ansible installation..."
+          ansible --version || (echo "❌ Ansible not installed" && exit 1)
+          ansible-config dump --only-changed || true
+          ansible-galaxy collection install -r requirements.yml
+
+      # ==============================
+      # Stage 2️⃣ Syntax Check (Optional)
+      # ==============================
+      - name: 🧩 Check Playbook Syntax
+        working-directory: ansible/local
+        run: |
+          echo "🧩 Checking playbook syntax..."
+          ansible-playbook -i "${INVENTORY_FILE}" "${PLAYBOOK_FILE}" --syntax-check
+
+      # ============================
+      # Stage 3️⃣ Run Playbook (Vault)
+      # ============================
+      - name: 🚀 Run Ansible Playbook (Vault Enabled)
+        working-directory: ansible/local
+        env:
+          VAULT_PASS: ${{ secrets.ANSIBLE_VAULT_PASS }}   # 對應 Jenkins credentialsId
+        run: |
+          echo "🚀 Running Ansible playbook with Vault decryption..."
+          echo "$VAULT_PASS" > "${VAULT_PASS_FILE}"
+          chmod 600 "${VAULT_PASS_FILE}"
+
+          ansible-playbook -i "${INVENTORY_FILE}" "${PLAYBOOK_FILE}" \
+            --vault-password-file "${VAULT_PASS_FILE}"
+
+          rm -f "${VAULT_PASS_FILE}"
+
+      # ============================
+      # Stage 4️⃣ Fetch Kubeconfig
+      # ============================
+      - name: 🧭 Fetch Kubeconfig
+        run: |
+          echo "📂 Determining runner's home directory..."
+          AGENT_HOME="$HOME"
+          KUBECONFIG_PATH="${AGENT_HOME}/.kubeconfig"
+
+          export KUBECONFIG="${KUBECONFIG_PATH}"
+          echo "✅ KUBECONFIG variable set to: ${KUBECONFIG}"
+
+          if [ -f "${KUBECONFIG_PATH}" ]; then
+            echo "🌐 Kubeconfig found:"
+            head -n 10 "${KUBECONFIG_PATH}"
+          else
+            echo "⚠️  No kubeconfig found at ${KUBECONFIG_PATH}"
+          fi
