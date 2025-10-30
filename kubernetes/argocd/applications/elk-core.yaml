@@ -14,7 +14,7 @@ spec:
     targetRevision: main
     path: kubernetes/monitor/elk
     directory:
-      recurse: true                   # 讀取 elk 目錄下所有 YAML
+      recurse: false                   # 讀取 elk 目錄下所有 YAML
   destination:
     server: https://kubernetes.default.svc
     namespace: logging
