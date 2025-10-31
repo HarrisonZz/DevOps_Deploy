@@ -55,9 +55,12 @@ jobs:
           terraform apply -auto-approve tfplan
 
       - name: Cleanup
-        working-directory: Terraform_and_Vagrant/aws
+        working-directory: terraform/cloud
         run: |
           echo "[INFO] Cleaning temporary files..."
           rm -f tfplan
-
-
+      - name: Upload tfstate to S3
+        working-directory: terraform/cloud
+        run: |
+          echo "[INFO] Uploading tfstate to S3..."
+          aws s3 cp terraform.tfstate s3://bbb-iot-artifact-registry/artifacts/
