@@ -1,5 +1,9 @@
 name: CD - Terraform Cloud Deploy
 
+permissions:
+  id-token: write        # OIDC 驗證必需
+  contents: read
+
 on:
   pull_request:
     types: [closed]      # 只在 PR 被關閉時觸發
@@ -15,6 +19,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::533267110761:role/github-actions-oidc-role
+          aws-region: ap-northeast-2
+          
       - name: Checkout source repo
         uses: actions/checkout@v4
         with:
@@ -39,7 +49,7 @@ jobs:
           terraform plan -out=tfplan
 
       - name: Terraform Apply (PaaS)
-        working-directory: terraform/local
+        working-directory: terraform/cloud
         run: |
           echo "[INFO] Applying Terraform..."
           terraform apply -auto-approve tfplan
@@ -48,5 +58,6 @@ jobs:
         working-directory: Terraform_and_Vagrant/aws
         run: |
           echo "[INFO] Cleaning temporary files..."
-          del /f /q tfplan
+          rm -f tfplan
+
 
