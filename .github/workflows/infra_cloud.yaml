@@ -9,11 +9,6 @@ on:
       - 'terraform/cloud/**'  # 僅當這個路徑下有變更時才觸發
   workflow_dispatch:
 
-env:
-  JENKINS_NODE_COOKIE: dontKillMe
-  GIT_USER: HarrisonZz
-  BASE_BRANCH: main
-
 jobs:
   deploy-cloud:
     if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
