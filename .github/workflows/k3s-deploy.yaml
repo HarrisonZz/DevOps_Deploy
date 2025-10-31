@@ -33,4 +33,4 @@ jobs:
       - name: Install Gateway API
         run: |
           kubectl apply -f kubernetes/gateway_api/standard-install.yaml
-          helm ngf kubernetes/gateway_api/nginx-gateway-fabric --create-namespace -n nginx-gateway
+          helm install ngf kubernetes/gateway_api/nginx-gateway-fabric --create-namespace -n nginx-gateway
