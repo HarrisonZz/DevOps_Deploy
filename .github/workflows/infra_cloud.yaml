@@ -65,8 +65,13 @@ jobs:
         run: |
           echo "[INFO] Cleaning temporary files..."
           rm -f tfplan
-      - name: Upload tfstate to S3
+      - name: Upload final tfstate to S3 (always)
+        if: always()                     # 不論成功或失敗都會執行
         working-directory: terraform/cloud
         run: |
-          echo "[INFO] Uploading tfstate to S3..."
-          aws s3 cp terraform.tfstate s3://bbb-iot-artifact-registry/artifacts/
+          echo "[INFO] Uploading final tfstate (regardless of result)..."
+          if [ -f terraform.tfstate ]; then
+            aws s3 cp terraform.tfstate s3://bbb-iot-artifact-registry/artifacts/
+          else
+            echo "[WARN] terraform.tfstate not found — skipping upload."
+          fi
