@@ -1,0 +1,52 @@
+name: CD - Terraform Cloud Deploy
+
+on:
+  pull_request:
+    types: [closed]      # 只在 PR 被關閉時觸發
+    branches:
+      - main             # 限定主分支
+    paths:
+      - 'terraform/cloud/**'  # 僅當這個路徑下有變更時才觸發
+  workflow_dispatch:
+
+env:
+  JENKINS_NODE_COOKIE: dontKillMe
+  GIT_USER: HarrisonZz
+  BASE_BRANCH: main
+
+jobs:
+  deploy-cloud:
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    runs-on: Windows
+
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: terraform/cloud
+          fetch-depth: 1
+
+      - name: Terraform Init (Cloud)
+        working-directory: terraform/cloud
+        run: |
+          echo "[INFO] Initialize Terraform..."
+          terraform init -input=false
+
+      - name: Terraform Plan (PaaS)
+        working-directory: Terraform_and_Vagrant/aws
+        run: |
+          echo "[INFO] Terraform Plan"
+          terraform plan -out=tfplan
+
+      - name: Terraform Apply (PaaS)
+        working-directory: terraform/local
+        run: |
+          echo "[INFO] Applying Terraform..."
+          terraform apply -auto-approve tfplan
+
+      - name: Cleanup
+        working-directory: Terraform_and_Vagrant/aws
+        run: |
+          echo "[INFO] Cleaning temporary files..."
+          del /f /q tfplan
+
