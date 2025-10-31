@@ -149,7 +149,8 @@ nginxGateway:
   tolerations: []
 
   # -- The nodeSelector of the NGINX Gateway Fabric control plane pod.
-  nodeSelector: {}
+  nodeSelector:
+    kubernetes.io/hostname: k3s-controlplane
 
   # -- The affinity of the NGINX Gateway Fabric control plane pod.
   affinity: {}
