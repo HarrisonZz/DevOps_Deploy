@@ -70,3 +70,13 @@ jobs:
         run: |
           echo "[INFO] Uploading latest tfstate (post-destroy)..."
           aws s3 cp terraform.tfstate s3://bbb-iot-artifact-registry/artifacts/
+      - name: Upload final tfstate to S3 (always)
+        if: always()                     # 不論成功或失敗都會執行
+        working-directory: terraform/cloud
+        run: |
+          echo "[INFO] Uploading final tfstate (regardless of result)..."
+          if [ -f terraform.tfstate ]; then
+            aws s3 cp terraform.tfstate s3://bbb-iot-artifact-registry/artifacts/
+          else
+            echo "[WARN] terraform.tfstate not found — skipping upload."
+          fi
