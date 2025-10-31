@@ -24,6 +24,9 @@ jobs:
           kubectl apply -f kubernetes/argocd/applications/ -n argocd
 
       - name: Install ArgoCD CLI
+        env:
+          ARGOCD_CLI_PASSWD: ${{ secrets.ARGOCD_CLI_PASSWD }} 
         run: |
            sudo curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
            sudo chmod +x /usr/local/bin/argocd
+           argocd login localhost:8087 --username admin --password $ARGOCD_CLI_PASSWD --insecure
