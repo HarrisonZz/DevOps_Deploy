@@ -4,7 +4,7 @@ metadata:
   name: web-route
   namespace: default
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "10"
 spec:
   parentRefs:
     - name: web-gateway

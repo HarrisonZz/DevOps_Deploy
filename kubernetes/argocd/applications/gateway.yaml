@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/HarrisonZz/DevOps_Deploy.git
     targetRevision: main
-    path: kubernetes/nginx/gateway_api/
+    path: kubernetes/gateway_api
     directory:
       recurse: false
       exclude: |
