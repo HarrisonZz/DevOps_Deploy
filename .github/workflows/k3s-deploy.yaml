@@ -25,7 +25,7 @@ jobs:
         run: |
            sudo curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
            sudo chmod +x /usr/local/bin/argocd
-           argocd login localhost:8087 --username admin --password $ARGOCD_CLI_PASSWD --insecure
+           # argocd login localhost:8087 --username admin --password $ARGOCD_CLI_PASSWD --insecure
       - name: Install Gateway API
         run: |
           kubectl apply -f kubernetes/gateway_api/standard-install.yaml
