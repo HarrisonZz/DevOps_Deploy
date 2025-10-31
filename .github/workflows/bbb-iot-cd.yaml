@@ -1,0 +1,33 @@
+name: CD - Ansible Deploy to BBB
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [closed]
+    branches: [main]
+    paths:
+      - 'ansible/iot-bbb/**'
+
+jobs:
+  deploy-bbb:
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    runs-on: Linux
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Decrypt Vault and run playbook
+        working-directory: ansible/iot-bbb
+        env:
+          VAULT_PASS: ${{ secrets.VAULT_PASS }}
+        run: |
+          echo "🚀 Running Ansible playbook with Vault decryption..."
+          echo "$VAULT_PASS" > /tmp/vault_pass.txt
+          chmod 600 /tmp/vault_pass.txt
+
+          ansible-playbook \
+            -i inventory.yml \
+            playbook_build.yml \
+            --extra-vars "@vault.yml" \
+            --vault-password-file /tmp/vault_pass.txt
