@@ -30,3 +30,12 @@ spec:
       kind: Service
       jqPathExpressions:
         - .metadata.annotations
+
+    - group: apps
+      kind: Deployment
+      jqPathExpressions:
+        - .metadata.annotations
+    - group: v1
+      kind: Service
+      jqPathExpressions:
+        - .metadata.annotations
