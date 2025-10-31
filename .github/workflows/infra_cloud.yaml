@@ -36,6 +36,12 @@ jobs:
         with:
           terraform_version: 1.9.7
 
+      - name: Download existing tfstate from S3
+        working-directory: terraform/cloud
+        run: |
+          echo "[INFO] Downloading latest tfstate from S3..."
+          aws s3 cp s3://bbb-iot-artifact-registry/artifacts/terraform.tfstate terraform.tfstate || echo "[WARN] No remote state found, continuing..."
+
       - name: Terraform Init (Cloud)
         working-directory: terraform/cloud
         run: |
