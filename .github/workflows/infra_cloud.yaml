@@ -12,7 +12,7 @@ on:
 jobs:
   deploy-cloud:
     if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
-    runs-on: Windows
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout source repo
@@ -21,6 +21,11 @@ jobs:
           sparse-checkout: terraform/cloud
           fetch-depth: 1
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.7
+
       - name: Terraform Init (Cloud)
         working-directory: terraform/cloud
         run: |
@@ -28,7 +33,7 @@ jobs:
           terraform init -input=false
 
       - name: Terraform Plan (PaaS)
-        working-directory: Terraform_and_Vagrant/aws
+        working-directory: terraform/cloud
         run: |
           echo "[INFO] Terraform Plan"
           terraform plan -out=tfplan
