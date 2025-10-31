@@ -1,19 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: grafana
+  name: monitor-root
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/HarrisonZz/DevOps_Deploy.git
     targetRevision: main
-    path: kubernetes/monitor/grafana
+    path: kubernetes/argocd/applications/monitor   # 👈 子 Application YAML 所在目錄
     directory:
-      exclude: 'values.yaml'
+      recurse: true
+      include: '*.yaml'
   destination:
     server: https://kubernetes.default.svc
-    namespace: monitoring
+    namespace: argocd                      # 子 Application 會建在 argocd namespace
   syncPolicy:
     automated:
       prune: true
