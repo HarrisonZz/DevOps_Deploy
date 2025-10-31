@@ -1,20 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: redis
+  name: webapp-root
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/HarrisonZz/DevOps_Deploy.git
     targetRevision: main
-    path: kubernetes/redis
+    path: kubernetes/argocd/applications/webapp   # 👈 子 Application YAML 所在目錄
     directory:
       recurse: true
       include: '*.yaml'
   destination:
     server: https://kubernetes.default.svc
-    namespace: default
+    namespace: argocd                      # 子 Application 會建在 argocd namespace
   syncPolicy:
     automated:
       prune: true
