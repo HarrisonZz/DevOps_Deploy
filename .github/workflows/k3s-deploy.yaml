@@ -19,10 +19,6 @@ jobs:
           kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
           kubectl rollout status deploy/argocd-server -n argocd --timeout=300s
 
-      - name: Apply ArgoCD Application
-        run: |
-          kubectl apply -f kubernetes/argocd/applications/ -n argocd
-
       - name: Install ArgoCD CLI
         env:
           ARGOCD_CLI_PASSWD: ${{ secrets.ARGOCD_CLI_PASSWD }} 
@@ -34,3 +30,7 @@ jobs:
         run: |
           kubectl apply -f kubernetes/gateway_api/standard-install.yaml
           helm install ngf kubernetes/gateway_api/nginx-gateway-fabric --create-namespace -n nginx-gateway
+
+      - name: Apply ArgoCD Application
+        run: |
+          kubectl apply -f kubernetes/argocd/applications/ -n argocd
