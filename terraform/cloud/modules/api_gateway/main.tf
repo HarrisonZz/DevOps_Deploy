@@ -10,7 +10,6 @@ terraform {
 
 provider "aws" {
   region  = "ap-northeast-2"
-  profile = "admin"
 }
 
 resource "aws_apigatewayv2_api" "http_api" {
