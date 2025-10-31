@@ -20,7 +20,7 @@ jobs:
       - name: Decrypt Vault and run playbook
         working-directory: ansible/iot-bbb
         env:
-          VAULT_PASS: ${{ secrets.VAULT_PASS }}
+          VAULT_PASS: ${{ secrets.ANSIBLE_VAULT_PASS }}
         run: |
           echo "🚀 Running Ansible playbook with Vault decryption..."
           echo "$VAULT_PASS" > /tmp/vault_pass.txt
