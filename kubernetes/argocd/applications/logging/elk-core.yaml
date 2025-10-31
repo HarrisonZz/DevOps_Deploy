@@ -25,6 +25,7 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
+      - RespectResourceOrder=true
   revisionHistoryLimit: 5
   info:
     - name: Owner
