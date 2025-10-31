@@ -1,0 +1,72 @@
+name: CD - Terraform Cloud Destroy
+
+permissions:
+  id-token: write        # OIDC 驗證必需
+  contents: read
+
+on:
+  workflow_dispatch:      # 僅允許手動執行（避免誤刪）
+
+jobs:
+  destroy-cloud:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::533267110761:role/github-actions-oidc-role
+          aws-region: ap-northeast-2
+
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: terraform/cloud
+          fetch-depth: 1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.7
+
+      - name: Download existing tfstate from S3
+        working-directory: terraform/cloud
+        run: |
+          echo "[INFO] Downloading latest tfstate from S3..."
+          aws s3 cp s3://bbb-iot-artifact-registry/artifacts/terraform.tfstate terraform.tfstate || echo "[WARN] No remote state found, continuing..."
+
+      - name: Terraform Init
+        working-directory: terraform/cloud
+        run: |
+          echo "[INFO] Initializing Terraform..."
+          terraform init -input=false
+
+      - name: Terraform Plan (Destroy Preview)
+        working-directory: terraform/cloud
+        run: |
+          echo "[INFO] Generating destroy plan..."
+          terraform plan -destroy -out=destroy.tfplan
+
+      - name: Confirm Destroy Plan Summary
+        working-directory: terraform/cloud
+        run: |
+          echo "[INFO] === Destroy Plan Summary ==="
+          terraform show -no-color destroy.tfplan | grep -E 'Plan:|#'
+
+      - name: Terraform Destroy (Auto-approve)
+        working-directory: terraform/cloud
+        run: |
+          echo "[WARNING] Applying destroy plan..."
+          terraform apply -auto-approve destroy.tfplan
+
+      - name: Cleanup
+        working-directory: terraform/cloud
+        run: |
+          echo "[INFO] Cleaning up..."
+          rm -f destroy.tfplan terraform.tfstate.backup
+
+      - name: Upload final tfstate to S3
+        working-directory: terraform/cloud
+        run: |
+          echo "[INFO] Uploading latest tfstate (post-destroy)..."
+          aws s3 cp terraform.tfstate s3://bbb-iot-artifact-registry/artifacts/
