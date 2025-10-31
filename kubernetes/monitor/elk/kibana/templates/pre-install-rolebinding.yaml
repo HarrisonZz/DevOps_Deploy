@@ -5,9 +5,9 @@ metadata:
   labels: {{ include "kibana.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-delete-policy": hook-succeeded
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-failed
 
-    argocd.argoproj.io/sync-wave: "-10" 
+    argocd.argoproj.io/sync-wave: "-8" 
 
     {{- if .Values.annotations }}
     {{- range $key, $value := .Values.annotations }}
