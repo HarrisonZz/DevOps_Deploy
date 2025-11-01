@@ -1,0 +1,39 @@
+name: 🚀 Master CD Pipeline – Local → Env → K3s → Cloud → BBB IoT
+
+on:
+  workflow_dispatch:
+
+jobs:
+  # === Stage 1: Terraform Local Infra ===
+  infra_local:
+    name: 🧱 Terraform Local Infra
+    uses: ./.github/workflows/infra_local.yml
+    secrets: inherit
+
+  # === Stage 2: Ansible Env Config ===
+  config_env:
+    name: ⚙️ Configure Environment
+    needs: [infra_local]
+    uses: ./.github/workflows/config_env.yaml
+    secrets: inherit
+
+  # === Stage 3: K3s + ArgoCD Install ===
+  k3s_deploy:
+    name: ☸️ Deploy K3s + ArgoCD
+    needs: [config_env]
+    uses: ./.github/workflows/k3s-deploy.yaml
+    secrets: inherit
+
+  # === Stage 4: Terraform Cloud Infra ===
+  infra_cloud:
+    name: ☁️ Terraform Cloud Infra
+    needs: [k3s_deploy]
+    uses: ./.github/workflows/infra_cloud.yaml
+    secrets: inherit
+
+  # === Stage 5: BBB IoT Deploy ===
+  bbb_iot_cd:
+    name: 🤖 Ansible Deploy to BBB
+    needs: [infra_cloud]
+    uses: ./.github/workflows/bbb-iot-cd.yaml
+    secrets: inherit
