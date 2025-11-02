@@ -642,7 +642,8 @@ certGenerator:
   tolerations: []
 
   # -- The nodeSelector of the cert-generator pod.
-  nodeSelector: {}
+  nodeSelector:
+    kubernetes.io/hostname: k3s-controlplane
 
   # -- The affinity of the cert-generator pod.
   affinity: {}
