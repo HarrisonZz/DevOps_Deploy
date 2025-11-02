@@ -40,6 +40,7 @@ jobs:
       - name: Download existing tfstate from S3
         working-directory: terraform/cloud
         run: |
+          aws sts get-caller-identity
           echo "[INFO] Downloading latest tfstate from S3..."
           aws s3 cp s3://bbb-iot-artifact-registry/artifacts/terraform.tfstate terraform.tfstate || echo "[WARN] No remote state found, continuing..."
 

@@ -1,6 +1,7 @@
 name: CD - Terraform Local Infra
 
 on:
+  workflow_call:
   pull_request:
     types: [closed]      # 只在 PR 被關閉時觸發
     branches:
