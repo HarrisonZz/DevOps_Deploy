@@ -4,7 +4,7 @@ metadata:
   name: es-proxy
   namespace: logging
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   replicas: 1
   selector:
