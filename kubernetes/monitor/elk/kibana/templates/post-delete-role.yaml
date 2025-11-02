@@ -4,8 +4,8 @@ metadata:
   name: post-delete-{{ template "kibana.fullname" . }}
   labels: {{ include "kibana.labels" . | nindent 4 }}
   annotations:
-    "helm.sh/hook": post-delete
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-failed
+    argocd.argoproj.io/hook: PostDelete
+    argocd.argoproj.io/hook-delete-policy: HookFailed
     argocd.argoproj.io/sync-wave: "2"
     {{- if .Values.annotations }}
     {{- range $key, $value := .Values.annotations }}

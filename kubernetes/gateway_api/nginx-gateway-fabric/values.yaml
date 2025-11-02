@@ -479,7 +479,7 @@ nginx:
 
   # -- The pod configuration for the NGINX data plane pod. This is applied globally to all Gateways managed by this
   # instance of NGINX Gateway Fabric.
-  pod: {}
+  pod:
     # -- The termination grace period of the NGINX data plane pod.
     # terminationGracePeriodSeconds: 30
 
@@ -487,7 +487,8 @@ nginx:
     # tolerations: []
 
     # -- The nodeSelector of the NGINX data plane pod.
-    # nodeSelector: {}
+    nodeSelector:
+      kubernetes.io/hostname: k3s-controlplane
 
     # -- The affinity of the NGINX data plane pod.
     # affinity: {}

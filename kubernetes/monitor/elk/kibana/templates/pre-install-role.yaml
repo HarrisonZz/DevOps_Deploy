@@ -4,8 +4,8 @@ metadata:
   name: pre-install-{{ template "kibana.fullname" . }}
   labels: {{ include "kibana.labels" . | nindent 4 }}
   annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookFailed
     argocd.argoproj.io/sync-wave: "-9" 
 
     {{- if .Values.annotations }}
