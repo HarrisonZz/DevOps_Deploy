@@ -2,6 +2,10 @@ name: 🚀 Master CD Pipeline – Local → Env → K3s → Cloud → BBB IoT
 
 on:
   workflow_dispatch:
+    secrets: inherit
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   # === Stage 1: Terraform Local Infra ===
