@@ -2,6 +2,7 @@ name: CD - Install ArgoCD on K3s
 
 on:
   workflow_dispatch:  # 手動觸發
+  workflow_call:
 
 jobs:
   setup-argocd:

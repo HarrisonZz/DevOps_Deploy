@@ -12,6 +12,7 @@ on:
     paths:
       - 'terraform/cloud/**'  # 僅當這個路徑下有變更時才觸發
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   deploy-cloud:
