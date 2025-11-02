@@ -5,7 +5,10 @@ metadata:
   name: {{ template "kibana.fullname" . }}-helm-scripts
   labels: {{ include "kibana.labels" . | nindent 4 }}
   annotations:
-
+    
+    # --- 修正後的 ArgoCD Sync Wave 註解 ---
+    # 設置為 Wave -15，確保它在所有 PreSync Job (-5) 之前部署
+    argocd.argoproj.io/hook: PreSync,PostDelete
     argocd.argoproj.io/sync-wave: "-15"
     {{- if .Values.annotations }}
     {{- range $key, $value := .Values.annotations }}
