@@ -8,6 +8,8 @@ metadata:
   labels:
     app.kubernetes.io/part-of: devops-stack
 spec:
+  dependsOn:
+    - elk-core
   project: default
   source:
     repoURL: https://github.com/HarrisonZz/DevOps_Deploy.git
