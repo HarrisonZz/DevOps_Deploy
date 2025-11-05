@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alertmanager
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: devops-stack
+    app.kubernetes.io/component: monitoring
+  annotations:
+    # 確保 Alertmanager 先於 Prometheus 建立
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/HarrisonZz/DevSecOps_with_BBB.git
+    targetRevision: main
+    path: Kubernetes/monitor/Alertmanager/Chart
+    helm:
+      releaseName: alertmanager
+      valueFiles:
+        - ./values.yaml  # override 你的自訂設定
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true        # 自動刪除過時資源
+      selfHeal: true     # 偵測異常自動修復
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+  revisionHistoryLimit: 5
+  info:
+    - name: Owner
+      value: Harrison Chen
+    - name: Purpose
+      value: Deploy Prometheus Alertmanager with Helm Chart
+
