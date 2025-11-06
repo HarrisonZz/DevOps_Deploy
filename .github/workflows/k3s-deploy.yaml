@@ -14,7 +14,21 @@ jobs:
         
       - name: Create ArgoCD namespace
         run: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+      - name: Create monitoring namespace
+        run: |
+          kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
 
+      # 4️⃣ 建立 Alertmanager SMTP Secret（來自 GitHub Secrets）
+      - name: Create Alertmanager SMTP Secret
+        env:
+          SMTP_PASS: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          kubectl -n monitoring create secret generic alertmanager-smtp-auth \
+            --from-literal=smtp-password="${SMTP_PASS}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          echo "✅ Secret created in namespace: monitoring"
+          
       - name: Install ArgoCD
         run: |
           kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
