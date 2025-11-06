@@ -1,0 +1,134 @@
+---
+- name: Clone, build, and run BBB IoT app
+  hosts: bbb_iot
+  become: no
+  vars:
+    repo_url: "https://github.com/HarrisonZz/BeagleBoneBlack_IoT.git"
+    branch: "main"
+    remote_app_dir: "/home/debian/BeagleBoneBlack_IoT"
+    binary_path: "{{ remote_app_dir }}/build/bin/mqtt_mutual"
+
+  tasks:
+    - name: Ensure build tools are installed
+      become: yes
+      apt:
+        name:
+          - git
+          - cmake
+          - build-essential
+          - pkg-config
+          - libssl-dev
+        state: present
+        update_cache: yes
+
+    - name: Clone repository if not exists
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ remote_app_dir }}"
+        version: "{{ branch }}"
+        update: yes
+
+    - name: Clean previous build directory
+      file:
+        path: "{{ remote_app_dir }}/build"
+        state: absent
+
+    - name: Ensure cert directory exists
+      file:
+        path: "{{ remote_app_dir }}/certs"
+        state: directory
+        mode: '0700'
+
+    - name: Copy certificates to BBB
+      copy:
+        src: "{{ playbook_dir }}/certs/"
+        dest: "{{ remote_app_dir }}/certs/"
+        mode: '0600'
+        force: yes
+
+    - name: Configure and build mqtt_mutual
+      shell: |
+        mkdir -p build 
+        cd build
+        cmake -DBUILD_DEMOS=OFF -DBUILD_TESTS=OFF -DDOWNLOAD_CERTS=OFF -DBUILD_SHARED_LIBS=OFF .. &&
+        make mqtt_mutual -j$(nproc)""
+      args:
+        chdir: "{{ remote_app_dir }}"
+
+    - name: Verify binary exists
+      stat:
+        path: "{{ binary_path }}"
+      register: binary_check
+
+    - name: Fail if binary not found
+      fail:
+        msg: "Binary not found at {{ binary_path }}"
+      when: not binary_check.stat.exists
+
+    - name: Archive build directory into tar.gz
+      become: no
+      shell: |
+        tar -czf /tmp/iot_build.tar.gz -C "{{ remote_app_dir }}" build
+      args:
+        executable: /bin/bash
+      when: binary_check.stat.exists
+
+    - name: Fetch built binary back to controller
+      fetch:
+        src: "/tmp/iot_build.tar.gz"
+        dest: "/tmp/bbb_iot/"
+        flat: yes
+      when: binary_check.stat.exists
+    
+    - name: Remove source directory after fetching binary
+      file:
+        path: "{{ remote_app_dir }}/build"
+        state: absent
+      when: binary_check.stat.exists
+    
+    # - name: Deploy BeagleBone IoT MQTT client service
+    #   become: yes
+    #   copy:
+    #     dest: /etc/systemd/system/bbb_iot_app.service
+    #     mode: '0644'
+    #     content: |
+    #       [Unit]
+    #       Description=BeagleBone IoT MQTT Client
+    #       After=network-online.target
+    #       Wants=network-online.target
+
+    #       [Service]
+    #       Type=simple
+    #       User=debian
+    #       Group=debian
+    #       WorkingDirectory=/home/debian/BeagleBoneBlack_IoT/build/bin
+    #       ExecStart=/usr/bin/stdbuf -oL -eL /home/debian/BeagleBoneBlack_IoT/build/bin/mqtt_mutual
+    #       StandardOutput=journal
+    #       StandardError=journal
+    #       Restart=on-failure
+    #       RestartSec=5
+
+    #       [Install]
+    #       WantedBy=multi-user.target
+
+    # - name: Reload systemd daemon
+    #   become: yes
+    #   command: systemctl daemon-reload
+
+    # - name: Enable and start bbb_iot_app.service
+    #   become: yes
+    #   systemd:
+    #     name: bbb_iot_app.service
+    #     enabled: yes
+    #     state: started
+
+    # - name: Verify service status
+    #   become: yes
+    #   command: systemctl is-active bbb_iot_app.service
+    #   register: service_status
+    #   changed_when: false
+
+    # - name: Show current service state
+    #   debug:
+    #     msg: "bbb_iot_app.service is {{ service_status.stdout }}"
+
