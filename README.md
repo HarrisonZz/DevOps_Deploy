@@ -6,7 +6,7 @@
 
 下圖為整體應用部署架構示意：
 
-![Application Architecture](./application.png)
+![Application Architecture](docs/images/application.png)
 ## 🔹 架構說明
 
 ### 1️⃣ Kubernetes & ArgoCD 部署層
