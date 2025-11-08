@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/component: monitoring
   annotations:
     # 確保 Alertmanager 先於 Prometheus 建立
-    argocd.argoproj.io/sync-wave: "-5"
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   project: default
   source:
