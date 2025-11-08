@@ -31,12 +31,12 @@
 ![Alertmanager](docs/images/alertmanager.png)
 
 警報觸發時發送E-mail：
-![Alertmanager send mail](docs/images/aleralertmanager_mailtmanager.png)
+![Alertmanager send mail](docs/images/alertmanager_mail.png)
 
 - **Grafana**：
   - 視覺化展示系統與應用層監控儀表板。
   - 整合 Cloudflare Tunnel 提供安全的外部存取。
-![Grafana](docs/images/grafana.png)
+  ![Grafana](docs/images/grafana.png)
 
 ---
 
@@ -47,7 +47,7 @@
   - Logstash：資料清洗與結構化。
   - Elasticsearch：集中式日誌索引與儲存。
   - Kibana：圖形化日誌查詢與分析介面。
-![Kibana](docs/images/kibana.png)
+  ![Kibana](docs/images/kibana.png)
 
 - **Cloudflare Tunnel**：。
   - 將 Web Server 暴露至外部 Internet
@@ -60,11 +60,12 @@
 ### 4️⃣ IoT 與雲端整合層
 - **BeagleBone Black (BBB)**：
   - 執行容器化 Web Server（內含 Fluent Bit）, 並以RESTful API實現。
-![HTTP Server Demo](docs/images/http_server.png)
+  ![HTTP Server Demo](docs/images/http_server.png)
 
   - 透過 I²C 與 STM32 溝通控制實體設備。
   - 與 AWS IoT Core 以 MQTT 通訊：
     - **Subscribe**：接收雲端下發控制指令。
+      
     從訂閱的Topic取得內容後之應用程序log :
     ![MQTT Client logs](docs/images/bbb_iot_svc_log.png)
 
@@ -72,6 +73,7 @@
 - **AWS Lambda & API Gateway**：
   - API Gateway 為前端指令入口。
   - Lambda 接收 API 呼叫後 Publish 至 IoT Core。
+    
   透過 API Gateway發佈內容到 IoT Core 上的 Topic :
   ![API Gateway to Lambda](docs/images/lambda_iot.png)
   ![API Gateway](docs/images/api-gateway.png)
@@ -84,6 +86,7 @@
   - EventBridge 定時觸發 Lambda。
   - Lambda 週期性從 Elasticsearch Query 資料，更新至 Aurora。
   - 實現雲端資料彙整與可視化循環。
+    
   Lambda 寫入 Aurora 簡介圖 :
   ![Lambda to Aurora](docs/images/lambda_aurora.png)
   
@@ -104,7 +107,7 @@
    - 觸發 GitHub Actions：
      - 驗證 YAML 結構正確。
      - 通知 ArgoCD 進行同步。
-![GitHub Action Workflows](docs/images/github_action_cd.png)
+  ![GitHub Action Workflows](docs/images/github_action_cd.png)
 
 3. **ArgoCD 自動同步**
    - 偵測 `main` 更新 → 觸發 GitOps Sync。
