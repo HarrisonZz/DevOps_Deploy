@@ -115,3 +115,4 @@
      1. ELK Stack
      2. Prometheus / AlertManager / Grafana
      3. IoT Web Server / MQTT Client
+  ![ArgoCD](docs/images/argocd.png)
