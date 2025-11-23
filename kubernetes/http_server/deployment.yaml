@@ -4,7 +4,8 @@ metadata:
   name: web-app
   labels:
     app: web-app
-  argocd.argoproj.io/sync-wave: "2"
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   replicas: 1
   progressDeadlineSeconds: 200
@@ -38,7 +39,7 @@ spec:
             memory: "60Mi"
       containers:
       - name: web-app
-        image: harrisonchen0418/go_build:BBB
+        image: harrisonchen0418/go_build:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
